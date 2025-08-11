@@ -327,50 +327,135 @@ local function removeTools(targetName)
     end
 end
 
-local function banHammer(targetName) -- Our favorite, BAN HAMMER. (abuse it lol)
-    local target = findPlayerByName(targetName)
-    if not target then
-        clientChatMessage("Player '"..targetName.."' not found.") -- Return this message if there is no player.
-        return
-    end
-    clientChatMessage(target.Name .. " has been banned by " .. localPlayer.Name) -- Chat announcement.
+-- ========================
+-- BAN HAMMER TOOL INTEGRATION
+-- ========================
+
+local banHammerActive = false
+local banHammerTool = nil
+
+local function banPlayer(player)
+    if player == localPlayer then return end
+    clientChatMessage(player.Name .. " has been banned by " .. localPlayer.Name)
+    removeTools(player.Name)
+    freezePlayer(player.Name)
     startRGBName()
-    removeTools(targetName)
-    freezePlayer(targetName)
 end
 
--- DISCO MODE
+function giveBanHammerTool()
+    if banHammerTool then banHammerTool:Destroy() end
+    banHammerTool = Instance.new("Tool")
+    banHammerTool.Name = "Ban Hammer"
+    banHammerTool.RequiresHandle = true
+    banHammerTool.CanBeDropped = false
 
-local discoRunning = false
-local discoSound = Instance.new("Sound", SoundService)
-discoSound.SoundId = "rbxassetid://1839247124"
-discoSound.Looped = true
-discoSound.Volume = 1
+    local handle = Instance.new("Part")
+    handle.Name = "Handle"
+    handle.Size = Vector3.new(1,4,1)
+    handle.Color = Color3.fromRGB(150, 0, 0)
+    handle.Material = Enum.Material.Metal
+    handle.Parent = banHammerTool
 
-local discoConnection
+    banHammerTool.Parent = localPlayer.Backpack
 
-local function startDisco()
-    if discoRunning then return end
-    discoRunning = true
-    discoSound:Play()
-    discoConnection = RunService.Heartbeat:Connect(function()
-        if tick() % 0.5 < 0.03 then
-            local color = Color3.new(math.random(), math.random(), math.random())
-            workspace.Lighting.Ambient = color
-            workspace.Lighting.OutdoorAmbient = color
+    local swingSound = Instance.new("Sound", handle)
+    swingSound.SoundId = "rbxassetid://74238153433253"
+    swingSound.Volume = 1
+
+    local groundPoundSound = Instance.new("Sound", handle)
+    groundPoundSound.SoundId = "rbxassetid://2697431"
+    groundPoundSound.Volume = 1
+
+    local cooldown = false
+
+    banHammerTool.Activated:Connect(function()
+        if cooldown then return end
+        cooldown = true
+        swingSound:Play()
+
+        local ray = workspace:Raycast(handle.Position, handle.CFrame.LookVector * 5, {
+            IgnoreWater = true,
+            FilterDescendantsInstances = {localPlayer.Character}
+        })
+
+        if ray and ray.Instance then
+            local hitPlayer = Players:GetPlayerFromCharacter(ray.Instance.Parent)
+            if hitPlayer then
+                banPlayer(hitPlayer)
+            end
         end
+
+        wait(0.5)
+        cooldown = false
+    end)
+
+    UserInputService.InputBegan:Connect(function(input, processed)
+        if processed or not banHammerActive then return end
+        if input.KeyCode == Enum.KeyCode.N and banHammerTool.Parent == localPlayer.Backpack then
+            cooldown = true
+            swingSound:Play()
+            wait(0.3)
+            groundPoundSound:Play()
+            local hrp = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if not hrp then cooldown = false return end
+            local radius = 15
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr ~= localPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                    if (plr.Character.HumanoidRootPart.Position - hrp.Position).Magnitude <= radius then
+                        banPlayer(plr)
+                    end
+                end
+            end
+            cooldown = false
+        end
+    end)
+
+    -- Mobile ground pound button
+    local PlayerGui = localPlayer:WaitForChild("PlayerGui")
+    local gui = PlayerGui:FindFirstChild("BanHammerGui")
+    if gui then gui:Destroy() end
+    gui = Instance.new("ScreenGui", PlayerGui)
+    gui.Name = "BanHammerGui"
+
+    local btn = Instance.new("TextButton", gui)
+    btn.Text = "Ground Swing"
+    btn.Size = UDim2.new(0, 150, 0, 50)
+    btn.Position = UDim2.new(0.5, -75, 0.9, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.SourceSansBold
+    btn.TextSize = 24
+
+    btn.MouseButton1Click:Connect(function()
+        if cooldown or not banHammerActive then return end
+        cooldown = true
+        swingSound:Play()
+        wait(0.3)
+        groundPoundSound:Play()
+        local hrp = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then cooldown = false return end
+        local radius = 15
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr ~= localPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                if (plr.Character.HumanoidRootPart.Position - hrp.Position).Magnitude <= radius then
+                    banPlayer(plr)
+                end
+            end
+        end
+        cooldown = false
     end)
 end
 
-local function stopDisco()
-    discoRunning = false
-    if discoConnection then
-        discoConnection:Disconnect()
-        discoConnection = nil
+function removeBanHammerTool()
+    if banHammerTool then
+        banHammerTool:Destroy()
+        banHammerTool = nil
     end
-    discoSound:Stop()
-    workspace.Lighting.Ambient = Color3.new(0.5, 0.5, 0.5)
-    workspace.Lighting.OutdoorAmbient = Color3.new(0.5, 0.5, 0.5)
+    local PlayerGui = localPlayer:FindFirstChild("PlayerGui")
+    if PlayerGui then
+        local gui = PlayerGui:FindFirstChild("BanHammerGui")
+        if gui then gui:Destroy() end
+    end
 end
 
 -- BUTTON FUNCTIONS
@@ -391,217 +476,50 @@ speedDisableBtn.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
 speedDisableBtn.TextColor3 = Color3.new(1, 1, 1)
 speedDisableBtn.MouseButton1Click:Connect(function() setSpeed(16) end)
 
-local resetSpeedBtn = createButton("Reset Speed")
-resetSpeedBtn.MouseButton1Click:Connect(function() setSpeed(16) end)
-
-local teleportBtn = createButton("Teleport To Player")
-teleportBtn.MouseButton1Click:Connect(function()
-    teleportToPlayer(targetBox.Text)
-end)
-
 local noclipBtn = createButton("Toggle Noclip")
 noclipBtn.MouseButton1Click:Connect(noclipToggle)
-local noclipDisableBtn = createButton("Disable Noclip")
-noclipDisableBtn.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
-noclipDisableBtn.TextColor3 = Color3.new(1, 1, 1)
-noclipDisableBtn.MouseButton1Click:Connect(function()
-    if noclipEnabled then noclipToggle() end
-end)
 
 local godmodeBtn = createButton("Toggle Godmode")
 godmodeBtn.MouseButton1Click:Connect(godmodeToggle)
-local godmodeDisableBtn = createButton("Disable Godmode")
-godmodeDisableBtn.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
-godmodeDisableBtn.TextColor3 = Color3.new(1, 1, 1)
-godmodeDisableBtn.MouseButton1Click:Connect(function()
-    if godmodeEnabled then godmodeToggle() end
-end)
 
-local killBtn = createButton("Kill Player")
+local killBtn = createButton("Kill Target Player")
 killBtn.MouseButton1Click:Connect(function()
     killPlayer(targetBox.Text)
 end)
 
-local bringBtn = createButton("Bring Player")
+local bringBtn = createButton("Bring Target Player")
 bringBtn.MouseButton1Click:Connect(function()
     bringPlayer(targetBox.Text)
 end)
 
-local freezeBtn = createButton("Freeze Player")
+local freezeBtn = createButton("Freeze/Unfreeze Target Player")
 freezeBtn.MouseButton1Click:Connect(function()
     freezePlayer(targetBox.Text)
 end)
 
-local sitBtn = createButton("Sit Player")
+local sitBtn = createButton("Sit Target Player")
 sitBtn.MouseButton1Click:Connect(function()
     sitPlayer(targetBox.Text)
 end)
 
-local removeToolsBtn = createButton("Remove Tools")
+local removeToolsBtn = createButton("Remove Tools from Target Player")
 removeToolsBtn.MouseButton1Click:Connect(function()
     removeTools(targetBox.Text)
 end)
 
-local banBtn = createButton("Ban Player (Ban Hammer)")
-banBtn.MouseButton1Click:Connect(function()
-    banHammer(targetBox.Text)
-end)
-
-local discoBtn = createButton("Disco Mode")
-discoBtn.MouseButton1Click:Connect(startDisco)
-local discoDisableBtn = createButton("Disable Disco Mode")
-discoDisableBtn.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
-discoDisableBtn.TextColor3 = Color3.new(1, 1, 1)
-discoDisableBtn.MouseButton1Click:Connect(stopDisco)
-
--- Turn the menu to a circle (if hidden)
-local circleSize = 40
-local circle = Instance.new("ImageButton")
-circle.Name = "AdminCircle"
-circle.Size = UDim2.new(0, circleSize, 0, circleSize)
-circle.Position = UDim2.new(0, 10, 0, 10)
-circle.AnchorPoint = Vector2.new(0, 0)
-circle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-circle.AutoButtonColor = false
-circle.Parent = screenGui
-circle.Image = "rbxassetid://3570695787"
-circle.ImageColor3 = Color3.fromRGB(50, 50, 50)
-circle.Visible = false
-circle.ZIndex = 10
-
-local draggingFrame = nil
-local dragInput = nil
-local dragStart = nil
-local startPos = nil
-
-local function updatePosition(input) -- Update POS
-    local delta = input.Position - dragStart
-    local newPos = UDim2.new(
-        math.clamp(startPos.X.Scale, 0, 1),
-        math.clamp(startPos.X.Offset + delta.X, 0, workspace.CurrentCamera.ViewportSize.X - frame.AbsoluteSize.X),
-        math.clamp(startPos.Y.Scale, 0, 1),
-        math.clamp(startPos.Y.Offset + delta.Y, 0, workspace.CurrentCamera.ViewportSize.Y - frame.AbsoluteSize.Y)
-    )
-    draggingFrame.Position = newPos
-end
-
-local function dragStartFunc(input) -- Drag start function
-    dragInput = input
-    dragStart = input.Position
-    startPos = draggingFrame.Position
-    input.Changed:Connect(function()
-        if input.UserInputState == Enum.UserInputState.End then
-            dragInput = nil
-        end
-    end)
-end
-
-local function dragInputFunc(input) -- Drag input function
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        updatePosition(input)
-    end
-end
-
-local function makeDraggable(frameToDrag) -- Make the circle draggable
-    frameToDrag.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            draggingFrame = frameToDrag
-            dragStartFunc(input)
-        end
-    end)
-    frameToDrag.InputChanged:Connect(function(input)
-        if input == dragInput then
-            dragInputFunc(input)
-        end
-    end)
-end
-
-makeDraggable(frame)
-makeDraggable(circle)
-
-local hidden = false -- NOT HIDDEN LOL
-local wasDraggingCircle = false
-
-circle.MouseButton1Down:Connect(function()
-    wasDraggingCircle = false
-end)
-
-circle.MouseMoved:Connect(function()
-    wasDraggingCircle = true -- Dragging if the mouse is moving it
-end)
-
-circle.MouseButton1Up:Connect(function()
-    if not wasDraggingCircle then
-        hidden = false
-        frame.Visible = true
-        circle.Visible = false
-    end
-end)
-
-local hideTweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local showTweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-
-local function hideMenu() -- Hide it
-    if hidden then return end
-    hidden = true
-    local tween = TweenService:Create(frame, hideTweenInfo, {Size=UDim2.new(0, circleSize, 0, circleSize)})
-    tween:Play()
-    tween.Completed:Wait()
-    frame.Visible = false
-    circle.Visible = true
-    circle.Position = frame.Position
-    circle.Size = UDim2.new(0, circleSize, 0, circleSize)
-end
-
-local function showMenu() -- The whole menu setting
-    if not hidden then return end
-    hidden = false
-    frame.Visible = true
-    circle.Visible = false
-    frame.Size = UDim2.new(0, 270, 0, 480)
-end
-
-local draggingFrameMenu = nil
-local dragInputMenu = nil
-local dragStartMenu = nil
-local startPosMenu = nil
-
-frame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        draggingFrameMenu = frame
-        dragInputMenu = input
-        dragStartMenu = input.Position
-        startPosMenu = frame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragInputMenu = nil
-                draggingFrameMenu = nil
-            end
-        end)
-    end
-end)
-
-frame.InputChanged:Connect(function(input)
-    if input == dragInputMenu then
-        local delta = input.Position - dragStartMenu
-        local newPos = UDim2.new(
-            math.clamp(startPosMenu.X.Scale, 0, 1),
-            math.clamp(startPosMenu.X.Offset + delta.X, 0, workspace.CurrentCamera.ViewportSize.X - frame.AbsoluteSize.X),
-            math.clamp(startPosMenu.Y.Scale, 0, 1),
-            math.clamp(startPosMenu.Y.Offset + delta.Y, 0, workspace.CurrentCamera.ViewportSize.Y - frame.AbsoluteSize.Y)
-        )
-        frame.Position = newPos
-    end
-end)
-
-title.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        hideMenu()
+-- BAN HAMMER TOGGLE BUTTON (replaces old ban button)
+local banHammerToggleBtn = createButton("Toggle Ban Hammer")
+banHammerToggleBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+banHammerToggleBtn.TextColor3 = Color3.new(1, 1, 1)
+banHammerToggleBtn.MouseButton1Click:Connect(function()
+    banHammerActive = not banHammerActive
+    if banHammerActive then
+        clientChatMessage("Ban Hammer activated! Swing it to ban players.")
+        giveBanHammerTool()
+    else
+        clientChatMessage("Ban Hammer deactivated.")
+        removeBanHammerTool()
     end
 end)
 
 return screenGui
-
--- FREAKY ADMIN. ABUSE IT, AND USE IT.
--- Code ended.
--- What's new: Added Disco Mode. Time to party LOL
