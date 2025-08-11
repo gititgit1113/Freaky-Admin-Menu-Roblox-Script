@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local SoundService = game:GetService("SoundService")
 local localPlayer = Players.LocalPlayer
 
 -- Menu settings
@@ -338,13 +339,57 @@ local function banHammer(targetName) -- Our favorite, BAN HAMMER. (abuse it lol)
     freezePlayer(targetName)
 end
 
+-- DISCO MODE
+
+local discoRunning = false
+local discoSound = Instance.new("Sound", SoundService)
+discoSound.SoundId = "rbxassetid://1839247124"
+discoSound.Looped = true
+discoSound.Volume = 1
+
+local discoConnection
+
+local function startDisco()
+    if discoRunning then return end
+    discoRunning = true
+    discoSound:Play()
+    discoConnection = RunService.Heartbeat:Connect(function()
+        if tick() % 0.5 < 0.03 then
+            local color = Color3.new(math.random(), math.random(), math.random())
+            workspace.Lighting.Ambient = color
+            workspace.Lighting.OutdoorAmbient = color
+        end
+    end)
+end
+
+local function stopDisco()
+    discoRunning = false
+    if discoConnection then
+        discoConnection:Disconnect()
+        discoConnection = nil
+    end
+    discoSound:Stop()
+    workspace.Lighting.Ambient = Color3.new(0.5, 0.5, 0.5)
+    workspace.Lighting.OutdoorAmbient = Color3.new(0.5, 0.5, 0.5)
+end
+
 -- BUTTON FUNCTIONS
 
 local flyBtn = createButton("Toggle Fly")
 flyBtn.MouseButton1Click:Connect(flyToggle)
+local flyDisableBtn = createButton("Disable Fly")
+flyDisableBtn.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
+flyDisableBtn.TextColor3 = Color3.new(1, 1, 1)
+flyDisableBtn.MouseButton1Click:Connect(function()
+    if flying then flyToggle() end
+end)
 
 local speedBtn = createButton("Set Speed to 50")
 speedBtn.MouseButton1Click:Connect(function() setSpeed(50) end)
+local speedDisableBtn = createButton("Disable Speed")
+speedDisableBtn.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
+speedDisableBtn.TextColor3 = Color3.new(1, 1, 1)
+speedDisableBtn.MouseButton1Click:Connect(function() setSpeed(16) end)
 
 local resetSpeedBtn = createButton("Reset Speed")
 resetSpeedBtn.MouseButton1Click:Connect(function() setSpeed(16) end)
@@ -356,9 +401,21 @@ end)
 
 local noclipBtn = createButton("Toggle Noclip")
 noclipBtn.MouseButton1Click:Connect(noclipToggle)
+local noclipDisableBtn = createButton("Disable Noclip")
+noclipDisableBtn.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
+noclipDisableBtn.TextColor3 = Color3.new(1, 1, 1)
+noclipDisableBtn.MouseButton1Click:Connect(function()
+    if noclipEnabled then noclipToggle() end
+end)
 
 local godmodeBtn = createButton("Toggle Godmode")
 godmodeBtn.MouseButton1Click:Connect(godmodeToggle)
+local godmodeDisableBtn = createButton("Disable Godmode")
+godmodeDisableBtn.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
+godmodeDisableBtn.TextColor3 = Color3.new(1, 1, 1)
+godmodeDisableBtn.MouseButton1Click:Connect(function()
+    if godmodeEnabled then godmodeToggle() end
+end)
 
 local killBtn = createButton("Kill Player")
 killBtn.MouseButton1Click:Connect(function()
@@ -389,6 +446,13 @@ local banBtn = createButton("Ban Player (Ban Hammer)")
 banBtn.MouseButton1Click:Connect(function()
     banHammer(targetBox.Text)
 end)
+
+local discoBtn = createButton("Disco Mode")
+discoBtn.MouseButton1Click:Connect(startDisco)
+local discoDisableBtn = createButton("Disable Disco Mode")
+discoDisableBtn.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
+discoDisableBtn.TextColor3 = Color3.new(1, 1, 1)
+discoDisableBtn.MouseButton1Click:Connect(stopDisco)
 
 -- Turn the menu to a circle (if hidden)
 local circleSize = 40
@@ -540,3 +604,4 @@ return screenGui
 
 -- FREAKY ADMIN. ABUSE IT, AND USE IT.
 -- Code ended.
+-- What's new: Added Disco Mode. Time to party LOL
