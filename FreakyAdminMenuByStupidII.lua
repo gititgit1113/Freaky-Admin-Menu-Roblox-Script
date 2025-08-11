@@ -15,9 +15,9 @@ pcall(function()
 end)
 
 local screenGui = Instance.new("ScreenGui") -- Create screen GUI
-screenGui.Name = "AdminGUI" -- Name it AdminGUI
+screenGui.Name = "AdminGUI"
 screenGui.ResetOnSpawn = false
-screenGui.Parent = game:GetService("CoreGui") -- Get service of CoreGUI
+screenGui.Parent = localPlayer:WaitForChild("PlayerGui") -- FIXED here (for mobile)
 
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 270, 0, 480)
