@@ -17,11 +17,12 @@ end)
 local screenGui = Instance.new("ScreenGui") -- Create screen GUI
 screenGui.Name = "AdminGUI"
 screenGui.ResetOnSpawn = false
-screenGui.Parent = localPlayer:WaitForChild("PlayerGui") -- FIXED here (for mobile)
+screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
+screenGui.IgnoreGuiInset = true -- FIX for mobile safe area
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 270, 0, 480)
-frame.Position = UDim2.new(0, 10, 0, 50)
+frame.Size = UDim2.new(0.8, 0, 0.7, 0) -- relative size for mobile + PC
+frame.Position = UDim2.new(0.1, 0, 0.1, 0) -- relative position centered-ish
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
 frame.AnchorPoint = Vector2.new(0,0)
@@ -69,7 +70,7 @@ local function createButton(text)
 end
 
 local rgbRunning = false
-local function startRGBName() -- When the script is executed, give the player admin.
+local function startRGBName()
     if rgbRunning then return end
     rgbRunning = true
     local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
@@ -135,7 +136,7 @@ local function clientChatMessage(message)
     })
 end
 
-local function findPlayerByName(name) -- Find player by name (required for a lot of admin commands)
+local function findPlayerByName(name)
     for _, p in pairs(Players:GetPlayers()) do
         if p.Name:lower():find(name:lower()) then
             return p
@@ -149,7 +150,7 @@ local flySpeed = 50
 local flyBodyVelocity = nil
 local flyConnection = nil
 
-local function flyToggle() -- Here, fly settings.
+local function flyToggle()
     flying = not flying
     local character = localPlayer.Character
     if not character then return end
@@ -198,14 +199,14 @@ local function flyToggle() -- Here, fly settings.
     end
 end
 
-local function setSpeed(speed) -- IM FAST ASF BOII
+local function setSpeed(speed)
     local humanoid = localPlayer.Character and localPlayer.Character:FindFirstChildOfClass("Humanoid")
     if humanoid then
         humanoid.WalkSpeed = speed
     end
 end
 
-local function teleportToPlayer(targetName) -- Teleporting to player.
+local function teleportToPlayer(targetName)
     local target = findPlayerByName(targetName)
     if not target then return end
     if not (target.Character and target.Character:FindFirstChild("HumanoidRootPart")) then return end
@@ -219,7 +220,7 @@ end
 local noclipEnabled = false
 local noclipConn
 
-local function noclipToggle() -- Noclip.
+local function noclipToggle()
     noclipEnabled = not noclipEnabled
     local character = localPlayer.Character
     if not character then return end
@@ -247,7 +248,7 @@ end
 local godmodeEnabled = false
 local godmodeConn
 
-local function godmodeToggle() -- Godmode (may not work in servers often)
+local function godmodeToggle()
     local humanoid = localPlayer.Character and localPlayer.Character:FindFirstChildOfClass("Humanoid")
     if not humanoid then return end
     godmodeEnabled = not godmodeEnabled
@@ -476,50 +477,74 @@ speedDisableBtn.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
 speedDisableBtn.TextColor3 = Color3.new(1, 1, 1)
 speedDisableBtn.MouseButton1Click:Connect(function() setSpeed(16) end)
 
+local teleportBtn = createButton("Teleport To Player")
+teleportBtn.MouseButton1Click:Connect(function()
+    local name = targetBox.Text
+    teleportToPlayer(name)
+end)
+
 local noclipBtn = createButton("Toggle Noclip")
 noclipBtn.MouseButton1Click:Connect(noclipToggle)
 
 local godmodeBtn = createButton("Toggle Godmode")
 godmodeBtn.MouseButton1Click:Connect(godmodeToggle)
 
-local killBtn = createButton("Kill Target Player")
+local killBtn = createButton("Kill Player")
 killBtn.MouseButton1Click:Connect(function()
     killPlayer(targetBox.Text)
 end)
 
-local bringBtn = createButton("Bring Target Player")
+local bringBtn = createButton("Bring Player")
 bringBtn.MouseButton1Click:Connect(function()
     bringPlayer(targetBox.Text)
 end)
 
-local freezeBtn = createButton("Freeze/Unfreeze Target Player")
+local freezeBtn = createButton("Freeze/Unfreeze Player")
 freezeBtn.MouseButton1Click:Connect(function()
     freezePlayer(targetBox.Text)
 end)
 
-local sitBtn = createButton("Sit Target Player")
+local sitBtn = createButton("Sit Player")
 sitBtn.MouseButton1Click:Connect(function()
     sitPlayer(targetBox.Text)
 end)
 
-local removeToolsBtn = createButton("Remove Tools from Target Player")
+local removeToolsBtn = createButton("Remove Tools from Player")
 removeToolsBtn.MouseButton1Click:Connect(function()
     removeTools(targetBox.Text)
 end)
 
--- BAN HAMMER TOGGLE BUTTON (replaces old ban button)
+local rgbBtn = createButton("Start RGB Name")
+rgbBtn.MouseButton1Click:Connect(startRGBName)
+local rgbStopBtn = createButton("Stop RGB Name")
+rgbStopBtn.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
+rgbStopBtn.TextColor3 = Color3.new(1,1,1)
+rgbStopBtn.MouseButton1Click:Connect(stopRGBName)
+
 local banHammerToggleBtn = createButton("Toggle Ban Hammer")
-banHammerToggleBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
-banHammerToggleBtn.TextColor3 = Color3.new(1, 1, 1)
 banHammerToggleBtn.MouseButton1Click:Connect(function()
     banHammerActive = not banHammerActive
     if banHammerActive then
-        clientChatMessage("Ban Hammer activated! Swing it to ban players.")
         giveBanHammerTool()
+        clientChatMessage("Ban Hammer activated.")
     else
-        clientChatMessage("Ban Hammer deactivated.")
         removeBanHammerTool()
+        clientChatMessage("Ban Hammer deactivated.")
     end
 end)
 
-return screenGui
+-- Mobile Fly Toggle Button (for touch devices)
+local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+if isMobile then
+    local flyMobileBtn = Instance.new("TextButton")
+    flyMobileBtn.Size = UDim2.new(0, 120, 0, 40)
+    flyMobileBtn.Position = UDim2.new(0.5, -60, 0.85, 0)
+    flyMobileBtn.Text = "Toggle Fly"
+    flyMobileBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    flyMobileBtn.TextColor3 = Color3.new(1,1,1)
+    flyMobileBtn.Parent = screenGui
+    flyMobileBtn.Font = Enum.Font.SourceSansBold
+    flyMobileBtn.TextSize = 20
+
+    flyMobileBtn.MouseButton1Click:Connect(flyToggle)
+end
