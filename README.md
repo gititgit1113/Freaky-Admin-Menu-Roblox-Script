@@ -4,7 +4,7 @@ StupidII's Freaky Admin Menu is now out.
 Right now you have a chance to become an admin!
 # How to:
 Install Synapse X (Roblox executors, you can also use Delta.. I guess.).
-I recommend Delta, it's free, while Synapse X is paid. https://delta-executor.com/ [DELTA]
+I recommend Delta, it's free, while Synapse X is paid. https://delta-executor.com/ is the official website.
 Go to Execute section for the script!
 # Execute
 ```lua
