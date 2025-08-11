@@ -1,9 +1,6 @@
--- don't remove or ur a skid
--- made by stupidii, give creds (don't remove this)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
 local localPlayer = Players.LocalPlayer
 
 pcall(function()
@@ -16,7 +13,7 @@ screenGui.ResetOnSpawn = false
 screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 280, 0, 360)
+frame.Size = UDim2.new(0, 300, 0, 440)
 frame.Position = UDim2.new(0, 20, 0, 100)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 4
@@ -61,7 +58,7 @@ targetBox.Position = UDim2.new(0.05, 0, 0, 60)
 targetBox.Parent = frame
 
 local buttonsHolder = Instance.new("Frame")
-buttonsHolder.Size = UDim2.new(0.9, 0, 0.75, 0)
+buttonsHolder.Size = UDim2.new(0.9, 0, 0.78, 0)
 buttonsHolder.Position = UDim2.new(0.05, 0, 0, 100)
 buttonsHolder.BackgroundTransparency = 1
 buttonsHolder.Parent = frame
@@ -74,12 +71,12 @@ uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
 local function createButton(text)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 0, 32)
+    btn.Size = UDim2.new(1, 0, 0, 36)
     btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     btn.TextColor3 = Color3.new(1, 1, 1)
     btn.Text = text
     btn.Font = Enum.Font.SourceSansBold
-    btn.TextSize = 18
+    btn.TextSize = 20
     btn.Parent = buttonsHolder
     btn.AutoButtonColor = true
     return btn
@@ -108,8 +105,8 @@ for _, text in ipairs(buttonsText) do
 end
 
 local function clientChatMessage(message)
-    local ChatService = game:GetService("StarterGui")
-    ChatService:SetCore("ChatMakeSystemMessage", {
+    local StarterGui = game:GetService("StarterGui")
+    StarterGui:SetCore("ChatMakeSystemMessage", {
         Text = message;
         Color = Color3.fromRGB(255, 100, 100);
         Font = Enum.Font.SourceSansBold;
@@ -332,16 +329,7 @@ end
 
 local banHammerActive = false
 local banHammerTool = nil
-
-local function clientChatMessage(msg)
-    local StarterGui = game:GetService("StarterGui")
-    StarterGui:SetCore("ChatMakeSystemMessage", {
-        Text = msg;
-        Color = Color3.fromRGB(255, 100, 100);
-        Font = Enum.Font.SourceSansBold;
-        FontSize = Enum.FontSize.Size24;
-    })
-end
+local cooldown = false
 
 local function removeBanHammerTool()
     if banHammerTool then
@@ -353,8 +341,6 @@ local function removeBanHammerTool()
         gui:Destroy()
     end
 end
-
-local cooldown = false
 
 local function banPlayer(player)
     if player == localPlayer then return end
@@ -437,9 +423,9 @@ local function giveBanHammerTool()
     gui.Name = "BanHammerGui"
 
     local btn = Instance.new("TextButton", gui)
-    btn.Text = "Ground Swing"
-    btn.Size = UDim2.new(0, 150, 0, 50)
-    btn.Position = UDim2.new(0.5, -75, 0.9, 0)
+    btn.Text = "Ground Swing (Press N)"
+    btn.Size = UDim2.new(0, 180, 0, 50)
+    btn.Position = UDim2.new(0.5, -90, 0.9, 0)
     btn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
     btn.TextColor3 = Color3.new(1, 1, 1)
     btn.Font = Enum.Font.SourceSansBold
@@ -524,19 +510,24 @@ end)
 UserInputService.InputChanged:Connect(function(input)
     if input == dragInput and dragging then
         local delta = input.Position - dragStart
-        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        frame.Position = UDim2.new(
+            math.clamp(startPos.X.Scale, 0, 1),
+            math.clamp(startPos.X.Offset + delta.X, 0, workspace.CurrentCamera.ViewportSize.X - frame.AbsoluteSize.X),
+            math.clamp(startPos.Y.Scale, 0, 1),
+            math.clamp(startPos.Y.Offset + delta.Y, 0, workspace.CurrentCamera.ViewportSize.Y - frame.AbsoluteSize.Y)
+        )
     end
 end)
 
 local hideBtn = Instance.new("TextButton")
 hideBtn.Size = UDim2.new(0, 40, 0, 40)
-hideBtn.Position = UDim2.new(0, frame.Position.X.Offset + frame.Size.X.Offset - 20, 0, frame.Position.Y.Offset - 20)
+hideBtn.Position = UDim2.new(0, 270, 0, 70)
 hideBtn.AnchorPoint = Vector2.new(0.5, 0.5)
 hideBtn.BackgroundColor3 = Color3.fromHSV(0, 1, 1)
 hideBtn.Text = "-"
 hideBtn.Font = Enum.Font.SourceSansBold
 hideBtn.TextSize = 28
-hideBtn.TextColor3 = Color3.new(1,1,1)
+hideBtn.TextColor3 = Color3.new(1, 1, 1)
 hideBtn.Parent = screenGui
 hideBtn.AutoButtonColor = true
 local circleCorner = Instance.new("UICorner", hideBtn)
@@ -546,18 +537,9 @@ local hideDragging, hideDragInput, hideDragStart, hideStartPos = false, nil, nil
 
 hideBtn.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        local now = tick()
-        if hideDragging and (now - (hideBtn.LastClick or 0) < 0.3) then
-            -- Double click to toggle menu visibility
-            frame.Visible = not frame.Visible
-            hideBtn.Text = frame.Visible and "-" or "+"
-            hideDragging = false
-            return
-        end
         hideDragging = true
         hideDragStart = input.Position
         hideStartPos = hideBtn.Position
-        hideBtn.LastClick = now
         input.Changed:Connect(function()
             if input.UserInputState == Enum.UserInputState.End then
                 hideDragging = false
@@ -579,4 +561,9 @@ UserInputService.InputChanged:Connect(function(input)
         local newY = math.clamp(hideStartPos.Y.Offset + delta.Y, 0, workspace.CurrentCamera.ViewportSize.Y - hideBtn.AbsoluteSize.Y)
         hideBtn.Position = UDim2.new(0, newX, 0, newY)
     end
+end)
+
+hideBtn.MouseButton1Click:Connect(function()
+    frame.Visible = not frame.Visible
+    hideBtn.Text = frame.Visible and "-" or "+"
 end)
