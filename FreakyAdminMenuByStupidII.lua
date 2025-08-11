@@ -1,6 +1,7 @@
 -- Freaky Admin Menu
 -- Made by StupidII.
 -- DON'T REMOVE THIS. IF YOU DO, YOU ARE A SKID.
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -8,21 +9,20 @@ local TweenService = game:GetService("TweenService")
 local SoundService = game:GetService("SoundService")
 local localPlayer = Players.LocalPlayer
 
--- Menu settings
-
+-- Cleanup old GUI
 pcall(function()
     game:GetService("CoreGui").AdminGUI:Destroy()
 end)
 
-local screenGui = Instance.new("ScreenGui") -- Create screen GUI
+-- Create ScreenGui for both PC and Mobile
+local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AdminGUI"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
-screenGui.IgnoreGuiInset = true -- FIX for mobile safe area
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0.8, 0, 0.7, 0) -- relative size for mobile + PC
-frame.Position = UDim2.new(0.1, 0, 0.1, 0) -- relative position centered-ish
+frame.Size = UDim2.new(0, 270, 0, 480)
+frame.Position = UDim2.new(0, 10, 0, 50)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
 frame.AnchorPoint = Vector2.new(0,0)
@@ -69,63 +69,6 @@ local function createButton(text)
     return btn
 end
 
-local rgbRunning = false
-local function startRGBName()
-    if rgbRunning then return end
-    rgbRunning = true
-    local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
-    localPlayer.DisplayName = "StupidII"
-    localPlayer.Name = "StupidII"
-    coroutine.wrap(function()
-        local hue = 0
-        while rgbRunning do
-            hue = (hue + 1) % 360
-            local color = Color3.fromHSV(hue/360, 1, 1)
-            local head = character:FindFirstChild("Head")
-            if head then
-                local existingBillboard = head:FindFirstChild("RGBName")
-                if not existingBillboard then
-                    local billboard = Instance.new("BillboardGui", head)
-                    billboard.Name = "RGBName"
-                    billboard.Size = UDim2.new(0, 100, 0, 30)
-                    billboard.StudsOffset = Vector3.new(0, 2, 0)
-                    billboard.AlwaysOnTop = true
-                    local textLabel = Instance.new("TextLabel", billboard)
-                    textLabel.Name = "TextLabel"
-                    textLabel.Size = UDim2.new(1, 0, 1, 0)
-                    textLabel.BackgroundTransparency = 1
-                    textLabel.Text = "StupidII"
-                    textLabel.Font = Enum.Font.ArialBold
-                    textLabel.TextSize = 22
-                    textLabel.TextColor3 = color
-                    textLabel.TextStrokeTransparency = 0
-                else
-                    local textLabel = existingBillboard:FindFirstChild("TextLabel")
-                    if textLabel then
-                        textLabel.TextColor3 = color
-                    end
-                end
-            end
-            wait(0.03)
-        end
-        local char = localPlayer.Character
-        if char then
-            local head = char:FindFirstChild("Head")
-            if head then
-                local bb = head:FindFirstChild("RGBName")
-                if bb then bb:Destroy() end
-            end
-        end
-    end)()
-end
-
-local function stopRGBName()
-    rgbRunning = false
-    localPlayer.DisplayName = localPlayer.Name
-    localPlayer.Name = localPlayer.Name
-    localPlayer.Character:WaitForChild("Head"):FindFirstChild("RGBName")?.Destroy()
-end
-
 local function clientChatMessage(message)
     local ChatService = game:GetService("StarterGui")
     ChatService:SetCore("ChatMakeSystemMessage", {
@@ -145,6 +88,7 @@ local function findPlayerByName(name)
     return nil
 end
 
+-- Fly variables
 local flying = false
 local flySpeed = 50
 local flyBodyVelocity = nil
@@ -157,30 +101,43 @@ local function flyToggle()
     local hrp = character:FindFirstChild("HumanoidRootPart")
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     if not hrp or not humanoid then return end
+
     if flying then
+        clientChatMessage("Fly enabled")
         flyBodyVelocity = Instance.new("BodyVelocity", hrp)
         flyBodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
         flyBodyVelocity.Velocity = Vector3.new(0,0,0)
         flyConnection = RunService.Heartbeat:Connect(function()
             local vel = Vector3.new()
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-                vel = vel + workspace.CurrentCamera.CFrame.LookVector
+            -- Mobile doesn't have keyboard, so toggle fly velocity with touch buttons
+            -- We'll simulate WASD movement with camera direction and simple toggle buttons instead
+            -- For now, just hover up and down slowly for mobile
+
+            if UserInputService.KeyboardEnabled then
+                if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                    vel = vel + workspace.CurrentCamera.CFrame.LookVector
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                    vel = vel - workspace.CurrentCamera.CFrame.LookVector
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                    vel = vel - workspace.CurrentCamera.CFrame.RightVector
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                    vel = vel + workspace.CurrentCamera.CFrame.RightVector
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                    vel = vel + Vector3.new(0,1,0)
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+                    vel = vel - Vector3.new(0,1,0)
+                end
+            else
+                -- Mobile: Hover with slow up/down oscillation
+                local t = tick()
+                vel = Vector3.new(0, math.sin(t*2) * 0.5, 0)
             end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-                vel = vel - workspace.CurrentCamera.CFrame.LookVector
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-                vel = vel - workspace.CurrentCamera.CFrame.RightVector
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-                vel = vel + workspace.CurrentCamera.CFrame.RightVector
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-                vel = vel + Vector3.new(0,1,0)
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
-                vel = vel - Vector3.new(0,1,0)
-            end
+
             if vel.Magnitude > 0 then
                 flyBodyVelocity.Velocity = vel.Unit * flySpeed
             else
@@ -188,6 +145,7 @@ local function flyToggle()
             end
         end)
     else
+        clientChatMessage("Fly disabled")
         if flyBodyVelocity then
             flyBodyVelocity:Destroy()
             flyBodyVelocity = nil
@@ -203,18 +161,26 @@ local function setSpeed(speed)
     local humanoid = localPlayer.Character and localPlayer.Character:FindFirstChildOfClass("Humanoid")
     if humanoid then
         humanoid.WalkSpeed = speed
+        clientChatMessage("Speed set to "..speed)
     end
 end
 
 local function teleportToPlayer(targetName)
     local target = findPlayerByName(targetName)
-    if not target then return end
-    if not (target.Character and target.Character:FindFirstChild("HumanoidRootPart")) then return end
+    if not target then
+        clientChatMessage("Player not found: "..targetName)
+        return
+    end
+    if not (target.Character and target.Character:FindFirstChild("HumanoidRootPart")) then
+        clientChatMessage("Target player has no character or HumanoidRootPart")
+        return
+    end
     local character = localPlayer.Character
     if not character then return end
     local hrp = character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     hrp.CFrame = target.Character.HumanoidRootPart.CFrame + Vector3.new(0,5,0)
+    clientChatMessage("Teleported to "..target.Name)
 end
 
 local noclipEnabled = false
@@ -225,6 +191,7 @@ local function noclipToggle()
     local character = localPlayer.Character
     if not character then return end
     if noclipEnabled then
+        clientChatMessage("Noclip enabled")
         noclipConn = RunService.Stepped:Connect(function()
             for _, part in pairs(character:GetChildren()) do
                 if part:IsA("BasePart") then
@@ -233,6 +200,7 @@ local function noclipToggle()
             end
         end)
     else
+        clientChatMessage("Noclip disabled")
         if noclipConn then
             noclipConn:Disconnect()
             noclipConn = nil
@@ -253,12 +221,14 @@ local function godmodeToggle()
     if not humanoid then return end
     godmodeEnabled = not godmodeEnabled
     if godmodeEnabled then
+        clientChatMessage("Godmode enabled")
         godmodeConn = humanoid.HealthChanged:Connect(function(health)
             if health < humanoid.MaxHealth then
                 humanoid.Health = humanoid.MaxHealth
             end
         end)
     else
+        clientChatMessage("Godmode disabled")
         if godmodeConn then
             godmodeConn:Disconnect()
             godmodeConn = nil
@@ -269,30 +239,49 @@ end
 local function killPlayer(targetName)
     if targetName == "" or targetName == nil then
         local humanoid = localPlayer.Character and localPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if humanoid then humanoid.Health = 0 end
+        if humanoid then 
+            humanoid.Health = 0 
+            clientChatMessage("You killed yourself")
+        end
         return
     end
     local target = findPlayerByName(targetName)
     if target and target.Character then
         local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
-        if humanoid then humanoid.Health = 0 end
+        if humanoid then 
+            humanoid.Health = 0
+            clientChatMessage("Killed "..target.Name)
+        end
+    else
+        clientChatMessage("Target player not found or no humanoid")
     end
 end
 
 local function bringPlayer(targetName)
     local target = findPlayerByName(targetName)
-    if not target then return end
-    if not (target.Character and target.Character:FindFirstChild("HumanoidRootPart")) then return end
+    if not target then
+        clientChatMessage("Player not found: "..targetName)
+        return
+    end
+    if not (target.Character and target.Character:FindFirstChild("HumanoidRootPart")) then
+        clientChatMessage("Target player has no character or HumanoidRootPart")
+        return
+    end
     local character = localPlayer.Character
     if not character then return end
-    local hrp = target.Character.HumanoidRootPart
-    hrp.CFrame = character.HumanoidRootPart.CFrame + Vector3.new(0,5,0)
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    target.Character.HumanoidRootPart.CFrame = hrp.CFrame + Vector3.new(0,5,0)
+    clientChatMessage("Brought "..target.Name.." to you")
 end
 
 local frozenPlayers = {}
 local function freezePlayer(targetName)
     local target = findPlayerByName(targetName)
-    if not target or not target.Character then return end
+    if not target or not target.Character then 
+        clientChatMessage("Player not found or no character")
+        return 
+    end
     if frozenPlayers[target] then
         for _, part in pairs(target.Character:GetChildren()) do
             if part:IsA("BasePart") then
@@ -300,6 +289,7 @@ local function freezePlayer(targetName)
             end
         end
         frozenPlayers[target] = nil
+        clientChatMessage("Unfroze "..target.Name)
     else
         for _, part in pairs(target.Character:GetChildren()) do
             if part:IsA("BasePart") then
@@ -307,30 +297,39 @@ local function freezePlayer(targetName)
             end
         end
         frozenPlayers[target] = true
+        clientChatMessage("Froze "..target.Name)
     end
 end
 
 local function sitPlayer(targetName)
     local target = findPlayerByName(targetName)
-    if not target or not target.Character then return end
+    if not target or not target.Character then 
+        clientChatMessage("Player not found or no character")
+        return 
+    end
     local humanoid = target.Character:FindFirstChildOfClass("Humanoid")
-    if humanoid then humanoid.Sit = true end
+    if humanoid then 
+        humanoid.Sit = true
+        clientChatMessage(target.Name.." is now sitting")
+    end
 end
 
 local function removeTools(targetName)
     local target = findPlayerByName(targetName)
-    if not target or not target.Character then return end
+    if not target or not target.Character then 
+        clientChatMessage("Player not found or no character")
+        return 
+    end
     for _, tool in pairs(target.Backpack:GetChildren()) do
         if tool:IsA("Tool") then tool:Destroy() end
     end
     for _, tool in pairs(target.Character:GetChildren()) do
         if tool:IsA("Tool") then tool:Destroy() end
     end
+    clientChatMessage("Removed tools from "..target.Name)
 end
 
--- ========================
--- BAN HAMMER TOOL INTEGRATION
--- ========================
+-- Ban Hammer Integration
 
 local banHammerActive = false
 local banHammerTool = nil
@@ -340,10 +339,9 @@ local function banPlayer(player)
     clientChatMessage(player.Name .. " has been banned by " .. localPlayer.Name)
     removeTools(player.Name)
     freezePlayer(player.Name)
-    startRGBName()
 end
 
-function giveBanHammerTool()
+local function giveBanHammerTool()
     if banHammerTool then banHammerTool:Destroy() end
     banHammerTool = Instance.new("Tool")
     banHammerTool.Name = "Ban Hammer"
@@ -390,27 +388,6 @@ function giveBanHammerTool()
         cooldown = false
     end)
 
-    UserInputService.InputBegan:Connect(function(input, processed)
-        if processed or not banHammerActive then return end
-        if input.KeyCode == Enum.KeyCode.N and banHammerTool.Parent == localPlayer.Backpack then
-            cooldown = true
-            swingSound:Play()
-            wait(0.3)
-            groundPoundSound:Play()
-            local hrp = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if not hrp then cooldown = false return end
-            local radius = 15
-            for _, plr in pairs(Players:GetPlayers()) do
-                if plr ~= localPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                    if (plr.Character.HumanoidRootPart.Position - hrp.Position).Magnitude <= radius then
-                        banPlayer(plr)
-                    end
-                end
-            end
-            cooldown = false
-        end
-    end)
-
     -- Mobile ground pound button
     local PlayerGui = localPlayer:WaitForChild("PlayerGui")
     local gui = PlayerGui:FindFirstChild("BanHammerGui")
@@ -447,7 +424,7 @@ function giveBanHammerTool()
     end)
 end
 
-function removeBanHammerTool()
+local function removeBanHammerTool()
     if banHammerTool then
         banHammerTool:Destroy()
         banHammerTool = nil
@@ -459,92 +436,91 @@ function removeBanHammerTool()
     end
 end
 
--- BUTTON FUNCTIONS
+-- BUTTONS
 
 local flyBtn = createButton("Toggle Fly")
-flyBtn.MouseButton1Click:Connect(flyToggle)
+flyBtn.MouseButton1Click:Connect(function()
+    print("Fly button clicked")
+    flyToggle()
+end)
+
 local flyDisableBtn = createButton("Disable Fly")
 flyDisableBtn.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
 flyDisableBtn.TextColor3 = Color3.new(1, 1, 1)
 flyDisableBtn.MouseButton1Click:Connect(function()
+    print("Fly disable button clicked")
     if flying then flyToggle() end
 end)
 
 local speedBtn = createButton("Set Speed to 50")
-speedBtn.MouseButton1Click:Connect(function() setSpeed(50) end)
+speedBtn.MouseButton1Click:Connect(function()
+    print("Speed button clicked")
+    setSpeed(50)
+end)
+
 local speedDisableBtn = createButton("Disable Speed")
 speedDisableBtn.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
 speedDisableBtn.TextColor3 = Color3.new(1, 1, 1)
-speedDisableBtn.MouseButton1Click:Connect(function() setSpeed(16) end)
-
-local teleportBtn = createButton("Teleport To Player")
-teleportBtn.MouseButton1Click:Connect(function()
-    local name = targetBox.Text
-    teleportToPlayer(name)
+speedDisableBtn.MouseButton1Click:Connect(function()
+    print("Speed disable button clicked")
+    setSpeed(16)
 end)
 
 local noclipBtn = createButton("Toggle Noclip")
-noclipBtn.MouseButton1Click:Connect(noclipToggle)
+noclipBtn.MouseButton1Click:Connect(function()
+    print("Noclip button clicked")
+    noclipToggle()
+end)
 
 local godmodeBtn = createButton("Toggle Godmode")
-godmodeBtn.MouseButton1Click:Connect(godmodeToggle)
+godmodeBtn.MouseButton1Click:Connect(function()
+    print("Godmode button clicked")
+    godmodeToggle()
+end)
 
-local killBtn = createButton("Kill Player")
+local killBtn = createButton("Kill Target Player")
 killBtn.MouseButton1Click:Connect(function()
+    print("Kill button clicked")
     killPlayer(targetBox.Text)
 end)
 
-local bringBtn = createButton("Bring Player")
+local bringBtn = createButton("Bring Target Player")
 bringBtn.MouseButton1Click:Connect(function()
+    print("Bring button clicked")
     bringPlayer(targetBox.Text)
 end)
 
-local freezeBtn = createButton("Freeze/Unfreeze Player")
+local freezeBtn = createButton("Freeze/Unfreeze Target Player")
 freezeBtn.MouseButton1Click:Connect(function()
+    print("Freeze button clicked")
     freezePlayer(targetBox.Text)
 end)
 
-local sitBtn = createButton("Sit Player")
+local sitBtn = createButton("Sit Target Player")
 sitBtn.MouseButton1Click:Connect(function()
+    print("Sit button clicked")
     sitPlayer(targetBox.Text)
 end)
 
-local removeToolsBtn = createButton("Remove Tools from Player")
+local removeToolsBtn = createButton("Remove Tools from Target Player")
 removeToolsBtn.MouseButton1Click:Connect(function()
+    print("Remove tools button clicked")
     removeTools(targetBox.Text)
 end)
 
-local rgbBtn = createButton("Start RGB Name")
-rgbBtn.MouseButton1Click:Connect(startRGBName)
-local rgbStopBtn = createButton("Stop RGB Name")
-rgbStopBtn.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
-rgbStopBtn.TextColor3 = Color3.new(1,1,1)
-rgbStopBtn.MouseButton1Click:Connect(stopRGBName)
-
 local banHammerToggleBtn = createButton("Toggle Ban Hammer")
+banHammerToggleBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+banHammerToggleBtn.TextColor3 = Color3.new(1, 1, 1)
 banHammerToggleBtn.MouseButton1Click:Connect(function()
+    print("Ban hammer toggle clicked")
     banHammerActive = not banHammerActive
     if banHammerActive then
+        clientChatMessage("Ban Hammer activated! Swing it to ban players.")
         giveBanHammerTool()
-        clientChatMessage("Ban Hammer activated.")
     else
-        removeBanHammerTool()
         clientChatMessage("Ban Hammer deactivated.")
+        removeBanHammerTool()
     end
 end)
 
--- Mobile Fly Toggle Button (for touch devices)
-local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-if isMobile then
-    local flyMobileBtn = Instance.new("TextButton")
-    flyMobileBtn.Size = UDim2.new(0, 120, 0, 40)
-    flyMobileBtn.Position = UDim2.new(0.5, -60, 0.85, 0)
-    flyMobileBtn.Text = "Toggle Fly"
-    flyMobileBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-    flyMobileBtn.TextColor3 = Color3.new(1,1,1)
-    flyMobileBtn.Parent = screenGui
-    flyMobileBtn.Font = Enum.Font.SourceSansBold
-    flyMobileBtn.TextSize = 20
-
-    flyMobileBtn.MouseButton1Click:Connect(flyToggle)
-end
+return screenGui
